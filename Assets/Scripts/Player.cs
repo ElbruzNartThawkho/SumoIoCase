@@ -225,6 +225,7 @@ public class Player : MonoBehaviour
         if (collision.gameObject.CompareTag("Player"))
         {
             PlayerListUpdate();
+            locationTraveled = GetNearestPlayerPosition();
         }
     }
 }
