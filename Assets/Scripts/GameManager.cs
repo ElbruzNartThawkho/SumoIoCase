@@ -39,7 +39,7 @@ public class GameManager : MonoBehaviour
     public void AddScore(int score)
     {
         this.score += score;
-        scoreText.SetText(score.ToString());
+        scoreText.SetText(this.score.ToString());
     }
     /// <summary>
     /// oyun bitiþ ekranýný gösterir ve gerekli iþlemleri yapar
@@ -72,21 +72,29 @@ public class GameManager : MonoBehaviour
                 playerList.Remove(player.transform);
                 foreach (Transform v in playerList)
                 {
-                    if (v.GetComponent<Player>().score > player.GetComponent<Player>().score)
+                    if (v.GetComponent<Player>().score >= player.GetComponent<Player>().score)
                     {
                         rank++;
                     }
                 }
                 rankText.SetText(rank.ToString());
                 winLoseText.SetText(rank == 1 ? "Win" : "Lose");
+                Time.timeScale = 0;
             }
-            scoreResText.SetText(score.ToString());
+            scoreResText.SetText(scoreText.text);
             gameOverScreen.SetActive(true);
             gameOverCam.SetActive(true);
         }
         else
         {
-            Time.timeScale = 0;
+            if (playerList.Count == 1)
+            {
+                Time.timeScale = 0;
+            }
+            if (isSpawning is false)
+            {
+                Time.timeScale = 0;
+            }
         }
     }
     /// <summary>
@@ -94,17 +102,17 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void PlayerListChange(Transform playerDeleted)
     {
-        if (playerList.Count == 2)
-        {
-            isSpawning = false;
-            GameOver();
-        }
         playerList.Remove(playerDeleted);
         foreach (Transform v in playerList)
         {
             v.GetComponent<Player>().PlayerListUpdate();
         }
         UpdateAlivePlayerText();
+        if (playerList.Count == 1)
+        {
+            isSpawning = false;
+            GameOver();
+        }
     }
     /// <summary>
     /// plane sýnýrlarýný alýyor

@@ -11,11 +11,11 @@ public class Player : MonoBehaviour
 
     [HideInInspector] public int score = 0;
     [SerializeField] float turnSpeed, moveSpeed, power;
-    [SerializeField] Transform mesh;
+    //[SerializeField] Transform mesh;
 
     List<Transform> players;
     PlayerInput playerInput;
-    CapsuleCollider coll;
+    //CapsuleCollider coll;
     Rigidbody rb;
     Animator animator;
     GameObject lastTouch;
@@ -29,17 +29,17 @@ public class Player : MonoBehaviour
         if (ai)
         {
             players = GameManager.instance.playerList;
-            locationTraveled = GetRandomPlayerPosition();
+            locationTraveled = GetNearestPlayerPosition();
         }
         else
         {
             playerInput = GetComponent<PlayerInput>();
         }
-        coll = GetComponent<CapsuleCollider>();
+        //coll = GetComponent<CapsuleCollider>();
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
     }
-    private void Update()
+    private void FixedUpdate()
     {
         Movement();
     }
@@ -50,15 +50,22 @@ public class Player : MonoBehaviour
     {
         if (ai)
         {
-            if (Vector3.Distance(locationTraveled.position, transform.position) < 1)
+            if(locationTraveled is null)
             {
-                locationTraveled = GetRandomPlayerPosition();
+                locationTraveled = GetNearestPlayerPosition();
             }
-            looked2Point = locationTraveled.position - transform.position;
-            looked2Point.y=transform.position.y;
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(looked2Point), turnSpeed * Time.deltaTime);
-            rb.MovePosition(moveSpeed * Time.deltaTime * transform.forward + transform.position);
+            else
+            {
+                looked2Point = locationTraveled.position - transform.position;
+                looked2Point.y = 0;
+            }
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(looked2Point), turnSpeed * Time.fixedDeltaTime);
+            rb.MovePosition(moveSpeed * Time.fixedDeltaTime * transform.forward + transform.position);
             animator.SetFloat("IdleWalkRun", moveSpeed);
+            //if (locationTraveled != null && Vector3.Distance(locationTraveled.position, transform.position) < transform.localScale.x / 2)
+            //{
+            //    locationTraveled = GetNearestPlayerPosition();
+            //}
         }
         else
         {
@@ -67,8 +74,7 @@ public class Player : MonoBehaviour
             {
                 looked2Point.x = transform.position.x + input.x * 100; looked2Point.z = transform.position.z + input.y * 100;
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(looked2Point), turnSpeed * Time.deltaTime);
-                rb.MovePosition(Mathf.Sqrt(Mathf.Pow(input.x, 2) + Mathf.Pow(input.y, 2)) * moveSpeed * Time.deltaTime * transform.forward + transform.position);
-                //rb.AddForce(Mathf.Sqrt(Mathf.Pow(input.x, 2) + Mathf.Pow(input.y, 2)) * moveSpeed * Time.deltaTime * transform.forward, ForceMode.VelocityChange);
+                rb.MovePosition(Mathf.Sqrt(Mathf.Pow(input.x, 2) + Mathf.Pow(input.y, 2)) * moveSpeed * Time.fixedDeltaTime * transform.forward + transform.position);
             }
             animator.SetFloat("IdleWalkRun", moveSpeed * Mathf.Sqrt(Mathf.Pow(input.x, 2) + Mathf.Pow(input.y, 2)));
         }
@@ -91,25 +97,62 @@ public class Player : MonoBehaviour
         }
         if (!isThere)
         {
-            locationTraveled=GetRandomPlayerPosition();
+            locationTraveled=GetNearestPlayerPosition();
         }
     }
     /// <summary>
-    /// ai gideceði rastgele karakterin konumunu seçiyor
+    /// ai gideceði karakterin konumunu seçiyor
     /// </summary>
     /// <returns></returns>
-    private Transform GetRandomPlayerPosition()
+    private Transform GetNearestPlayerPosition()
     {
         if (GameManager.instance.playerList.Count > 1)
         {
-            int randomIndex = Random.Range(0, players.Count);
-            if (players[randomIndex] == transform)
+            Transform nearestPlayer = null;
+            float closestDistance = float.MaxValue;
+
+            GameManager.instance.PlaneBorder();
+
+            foreach (Transform player in players)
             {
-                randomIndex = (randomIndex + 1) % players.Count;
+                if (player == transform)
+                    continue;
+
+                float distance = Vector3.Distance(transform.position, player.position);
+                if (distance < closestDistance && IsWithinPlaneBounds(player.position))
+                {
+                    closestDistance = distance;
+                    nearestPlayer = player;
+                }
             }
-            return players[randomIndex];
+
+            return nearestPlayer;
         }
-        else { return transform; }
+        else
+        {
+            return transform;
+        }
+    }
+    /// <summary>
+    /// seçtiði karakter plane içinde mi kontrol ediyor
+    /// </summary>
+    /// <param name="position"></param>
+    /// <returns></returns>
+    private bool IsWithinPlaneBounds(Vector3 position)
+    {
+        Vector3 planeCenter = GameManager.instance.planeCenter;
+        float halfPlaneWidth = GameManager.instance.halfPlaneWidth;
+        float halfPlaneLength = GameManager.instance.halfPlaneLength;
+
+        if (position.x >= planeCenter.x - halfPlaneWidth && position.x <= planeCenter.x + halfPlaneWidth &&
+            position.z >= planeCenter.z - halfPlaneLength && position.z <= planeCenter.z + halfPlaneLength)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
     /// <summary>
     /// birini düþürdüyse gerekli artýrmalarý yapar
@@ -120,9 +163,9 @@ public class Player : MonoBehaviour
         //coll.height *= 2;
         //coll.center *= 2;
         //mesh.localScale *= 2; 
-        power *= 1.5f;
-        moveSpeed *= 1.5f;
-        transform.localScale *= 1.5f;
+        power *= 1.25f;
+        moveSpeed *= 1.25f;
+        transform.localScale *= 1.25f;
         score += 1000;
         if(ai is false)
         {
@@ -171,9 +214,15 @@ public class Player : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            collision.gameObject.GetComponent<Rigidbody>().AddForce(2 * power * transform.forward, ForceMode.Impulse);
+            collision.gameObject.GetComponent<Rigidbody>().AddForce(power * transform.forward, ForceMode.Impulse);
             lastTouch = collision.gameObject;
         }
     }
-
+    private void OnCollisionExit(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            PlayerListUpdate();
+        }
+    }
 }
