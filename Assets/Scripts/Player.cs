@@ -208,6 +208,8 @@ public class Player : MonoBehaviour
         else if (other.CompareTag("TriggerPoint"))
         {
             other.GetComponentInParent<Rigidbody>().AddForce(3 * power * transform.forward, ForceMode.Impulse);
+            other.transform.GetComponentInParent<Player>().lastTouch = gameObject;
+            lastTouch = other.transform.parent.gameObject;
         }
     }
     private void OnCollisionEnter(Collision collision)
